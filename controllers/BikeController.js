@@ -114,7 +114,7 @@ class BikeController {
 							if (!bikeFinded) {
 								response.sendResponse(res, 404, null, false);
 							} else {
-								bike.updateOne({ _id: new ObjectId(bikeId) }, { $set: { nombre: body.nombre }}, (err, ok) => {
+								bike.updateOne({ _id: new ObjectId(bikeId) }, { $set: { nombre: body.nombre, modelo: body.modelo, color: body.color, rodado: body.rodado, precio: body.precio }}, (err, ok) => {
 									if (err) {
 										log.error(err);
 										log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/update - BikeController?update')}`);
