@@ -5,11 +5,15 @@ const configApp = require('../config/app');
 // Libs
 const chalk = require('chalk');
 const log = require('loglevel');
+const mongoose = require('mongoose');
 // Utils
 const response = require('../utils/ResponseUtil');
 const validate = require('../utils/ValidateUtil');
 // Models
 const models = require('../models/index');
+
+
+
 
 class BikeController {
 
@@ -34,22 +38,26 @@ class BikeController {
 
 					response.sendResponse(res, 422, err.details, false);
 				} else {
-					let Storage = models.storage;
+					let bike = new models.bike;
+						bike.nombre = body.nombre;
+						bike.modelo = body.modelo;
+						bike.color = body.color;
+						bike.rodado = body.rodado;
+						bike.precio = body.precio;
 
-					Storage.addBike(body)
-						.then(bikeSaved => {
-							if (bikeSaved) {
-								log.debug(`${chalk.bgGreen('Success')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/add - BikeController?add')}`);
-								response.sendResponse(res, 200, 'Bike save successful.', false);
+						bike.save((err, bikeSaved) => {
+							if (err) {
+								log.error(err);
+								log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/add - BikeController?add')}`);	
+							} else {
+								if (bikeSaved) {
+									log.debug(`${chalk.bgGreen('Success')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/add - BikeController?add')}`);
+									response.sendResponse(res, 200, 'Bike save successful.', false);
+								}
 							}
-						})
-						.catch(err => {
-							log.error(err);
-							log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/add - BikeController?add')}`);
 						});
-				}
-			});
-
+					}
+				});
 		} else {
 			log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/add - BikeController?add')}`);
 			response.sendResponse(res, 404, "Faltan parametros del servicio", false);
@@ -57,37 +65,27 @@ class BikeController {
 	}
 
 	findAll(req, res) {
-		let pageSize = 50;
-        let page =  0;
-        let limit = pageSize;
-        let offset = (page * pageSize);
-        let condition = {};
+		let condition = {};
+		let bike = models.bike;
 
-		let Storage = models.storage;
-
-		Storage.findAllBikes(condition, limit, offset)
-			.then(allBikes => {
-				if (allBikes.count != 0) {
+		bike.find({}, (err, allBikes) => {
+			if (err) {
+				log.error(err);
+				log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/all - BikeController?findAll')}`);
+			} else {
+				if (allBikes) {
 					log.debug(`${chalk.bgGreen('Success')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/all - BikeController?findAll')}`);
-					response.sendResponse(res, 200, allBikes.rows, false);
+					response.sendResponse(res, 200, allBikes, false);
 				} else {
 					response.sendResponse(res, 404, null, false);
 				}
-		})
-		.catch(err => {
-			log.error(err);
-			log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/all - BikeController?findAll')}`);
+			}
 		});
 	}
 
 	update(req, res) {
 		let bikeId = req.params.id;
 		let body = req.body;
-		let condition = {
-			where: {
-				id: bikeId
-			}
-		};
 
 		if ('nombre' in body && 'modelo' in body && 'color' in body && 'rodado' in body && 'precio' in body) {
 			const Joi = require('joi');
@@ -105,33 +103,31 @@ class BikeController {
 
 					response.sendResponse(res, 422, err.details, false);
 				} else {
-					let Storage = models.storage;
+					let ObjectId = mongoose.Types.ObjectId;
+					let bike = models.bike;
 
-					Storage.findOneBike(condition)
-						.then(bikeFinded => {
-							if (bikeFinded) {
-								Storage.updateBike(body, condition)
-								.then(bikeUpdated => {
-									if (bikeUpdated) {
+					bike.findById(new ObjectId(bikeId), function (err, bikeFinded) {
+						if (err) {
+							log.error(err);
+							log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/update - BikeController?update')}`);
+						} else {
+							if (!bikeFinded) {
+								response.sendResponse(res, 404, null, false);
+							} else {
+								bike.updateOne({ _id: new ObjectId(bikeId) }, { $set: { nombre: body.nombre }}, (err, ok) => {
+									if (err) {
+										log.error(err);
+										log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/update - BikeController?update')}`);
+									} else {
 										log.debug(`${chalk.bgGreen('Success')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/update- BikeController?delete')}`);
 										response.sendResponse(res, 200, 'Bike updated successful.', false);	
 									}
-								})
-								.catch(err => {
-									log.error(err);
-									log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/update - BikeController?update')}`);
-								})
-							} else {
-								response.sendResponse(res, 404, null, false);
+								});
 							}
-						})
-						.catch(err => {
-							log.error(err);
-							log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/update - BikeController?update')}`);
-						});
+						}
+					});
 				}
 			});
-
 		} else {
 			log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/add - BikeController?add')}`);
 			response.sendResponse(res, 404, "Faltan parametros del servicio", false);
@@ -140,35 +136,28 @@ class BikeController {
 
 	delete(req, res) {
 		let bikeId = req.params.id;
-		let condition = {
-			where: {
-				id: bikeId
-			}
-		};
+		let ObjectId = mongoose.Types.ObjectId;
+		let bike = models.bike;
 
-		let Storage = models.storage;
-
-		Storage.findOneBike(condition)
-		.then(bikeFinded => {
-			if (bikeFinded) {
-				Storage.destroyBike({id: bikeFinded.dataValues.id})
-				.then(bikeDeleted => {
-					if (bikeDeleted) {
-						log.debug(`${chalk.bgGreen('Success')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/delete - BikeController?delete')}`);
-						response.sendResponse(res, 200, 'Bike deleted successful.', false);
-					}
-				})
-				.catch(err => {
-					log.error(err);
-					log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/delete - BikeController?delete')}`);
-				});
+		bike.findById(new ObjectId(bikeId), function (err, bikeFinded) {
+			if (err) {
+				log.error(err);
+				log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/delete - BikeController?delete')}`);
 			} else {
-				response.sendResponse(res, 404, null, false);
+				if (!bikeFinded) {
+					response.sendResponse(res, 404, null, false);
+				} else {
+					bike.find({ _id: new ObjectId(bikeId) }).remove((err, bikeDeleted) =>{
+						if (err) {
+							log.error(err);
+							log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/delete - BikeController?delete')}`);
+						} else {
+							log.debug(`${chalk.bgGreen('Success')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/delete - BikeController?delete')}`);
+							response.sendResponse(res, 200, 'Bike deleted successful.', false);	
+						}
+					});
+				}
 			}
-		})
-		.catch(err => {
-			log.error(err);
-			log.debug(`${chalk.bgRed('Error')} ${chalk.bgMagenta('Exec')} ${chalk.bgCyan(req.method)} ${chalk.bgYellow('/bike/delete - BikeController?delete')}`);
 		});
 	}
 
